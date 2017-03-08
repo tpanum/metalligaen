@@ -2,6 +2,7 @@ package scraper
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -58,17 +59,49 @@ func (c *Client) GetSchedule(id int) error {
 		hometeam, err := api.TeamTagFromName(m.HomeTeam)
 		if err != nil {
 			fmt.Println(err)
+			continue
 		}
 
 		awayteam, err := api.TeamTagFromName(m.AwayTeam)
 		if err != nil {
 			fmt.Println(err)
+			continue
+		}
+
+		var score *api.Score
+		scoreSplit := strings.Split(m.GameScore, " - ")
+		if len(scoreSplit) != 0 {
+			homeScoreStr, awayScoreStr := scoreSplit[0], scoreSplit[1]
+
+			val, err := strconv.Atoi(homeScoreStr)
+			if err != nil {
+				fmt.Println("Unable to convert home score to int")
+				continue
+			}
+
+			score = &api.Score{
+				Home: api.Situation{
+					Goals: uint(val),
+				},
+			}
+
+			val, err = strconv.Atoi(awayScoreStr)
+			if err != nil {
+				fmt.Println("Unable to convert away score to int")
+				continue
+			}
+
+			score.Away = api.Situation{
+				Goals: uint(val),
+			}
+
 		}
 
 		matches[i] = &api.Match{
 			ID:          uint(m.ID),
 			HomeTeamTag: hometeam,
 			AwayTeamTag: awayteam,
+			Score:       score,
 			TimeOfMatch: timeOfMatch,
 		}
 	}
@@ -84,6 +117,7 @@ type rawMatch struct {
 	Time         string `json:"gameTime"`
 	HomeTeam     string `json:"homeTeam"`
 	AwayTeam     string `json:"awayTeam"`
+	GameScore    string `json:"gameResult"`
 	WentOvertime bool   `json:"OT"`
 	GWS          bool   `json:"GWS"`
 }
