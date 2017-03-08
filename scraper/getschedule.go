@@ -13,6 +13,37 @@ import (
 	"github.com/tpanum/metalligaen/api"
 )
 
+func scoreFromGameResult(result string) (*api.Score, error) {
+	scoreSplit := strings.Split(result, " - ")
+	var score *api.Score
+
+	if len(scoreSplit) != 0 {
+		homeScoreStr, awayScoreStr := scoreSplit[0], scoreSplit[1]
+
+		val, err := strconv.Atoi(homeScoreStr)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to parse home score to integer")
+		}
+
+		score = &api.Score{
+			Home: api.Situation{
+				Goals: uint(val),
+			},
+		}
+
+		val, err = strconv.Atoi(awayScoreStr)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to parse away score to integer")
+		}
+
+		score.Away = api.Situation{
+			Goals: uint(val),
+		}
+	}
+
+	return score, nil
+}
+
 func (c *Client) GetSchedule(id int) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -68,34 +99,7 @@ func (c *Client) GetSchedule(id int) error {
 			continue
 		}
 
-		var score *api.Score
-		scoreSplit := strings.Split(m.GameScore, " - ")
-		if len(scoreSplit) != 0 {
-			homeScoreStr, awayScoreStr := scoreSplit[0], scoreSplit[1]
-
-			val, err := strconv.Atoi(homeScoreStr)
-			if err != nil {
-				fmt.Println("Unable to convert home score to int")
-				continue
-			}
-
-			score = &api.Score{
-				Home: api.Situation{
-					Goals: uint(val),
-				},
-			}
-
-			val, err = strconv.Atoi(awayScoreStr)
-			if err != nil {
-				fmt.Println("Unable to convert away score to int")
-				continue
-			}
-
-			score.Away = api.Situation{
-				Goals: uint(val),
-			}
-
-		}
+		score, _ := scoreFromGameResult(m.GameScore)
 
 		matches[i] = &api.Match{
 			ID:          uint(m.ID),
