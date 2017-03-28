@@ -8,16 +8,20 @@ import (
 	"net/http"
 	"net/url"
 
-	eclient "github.com/neelance/eventsource/client"
+	esource "github.com/donovanhide/eventsource"
 )
 
-const METALID int = 1254
+type event struct {
+	Event string
+	Data  json.RawMessage
+}
 
 type Client struct {
-	token     string
-	quit      chan struct{}
-	dataQueue chan json.RawMessage
-	mutex     sync.Mutex
+	domain        string
+	token         string
+	quit          chan struct{}
+	eventHandlers map[string]chan chan json.RawMessage
+	mutex         sync.Mutex
 
 	isClosed bool
 }
@@ -27,13 +31,13 @@ const (
 	DOMAIN    = "http://metalligaen.dk"
 )
 
-func NewClient() (*Client, error) {
+func NewClient(domain string) (*Client, error) {
 	v := url.Values{
 		"clientProtocol": {"1.5"},
 		"connectionData": {"[{\"name\":\"sportsadminlivehub\"}]"},
 	}
 
-	resp, err := http.Get(DOMAIN + "/signalr/negotiate?" + v.Encode())
+	resp, err := http.Get(domain + "/signalr/negotiate?" + v.Encode())
 	if err != nil {
 		return nil, err
 	}
@@ -55,8 +59,10 @@ func NewClient() (*Client, error) {
 	}
 
 	c := &Client{
-		token:    token,
-		isClosed: true,
+		domain:        domain,
+		eventHandlers: make(map[string]chan chan json.RawMessage),
+		token:         token,
+		isClosed:      true,
 	}
 
 	c.connect()
@@ -73,9 +79,6 @@ type angularStruct struct {
 }
 
 func (c *Client) connect() error {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
 	v := url.Values{
 		"transport":       {"serverSentEvents"},
 		"clientProtocol":  {"1.5"},
@@ -84,34 +87,83 @@ func (c *Client) connect() error {
 		"tid":             {"1"},
 	}
 
-	client, err := eclient.New(DOMAIN + "/signalr/connect?" + v.Encode())
+	quit := make(chan struct{})
+
+	stream, err := esource.Subscribe(c.domain+"/signalr/connect?"+v.Encode(), "")
 	if err != nil {
 		return err
 	}
 
-	quit := make(chan struct{})
-	dataQueue := make(chan json.RawMessage, 10)
+	resp, err := http.Get(c.domain + "/signalr/start?" + v.Encode())
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
 
 	go func() {
+
 		for {
 			select {
 			case <-quit:
 				return
-			case event := <-client.Stream:
+			case err := <-stream.Errors:
+				fmt.Println("Error : ", err)
+			case e := <-stream.Events:
 				var resp angularStruct
-				json.Unmarshal(event.Data, &resp)
-
-				if len(resp.M) > 0 {
-					dataQueue <- resp.M[0].A[0]
+				if err := json.Unmarshal([]byte(e.Data()), &resp); err != nil {
+					continue
 				}
+
+				if len(resp.M) == 0 {
+					continue
+				}
+
+				c.receiveEvent(&event{
+					Event: resp.M[0].M,
+					Data:  resp.M[0].A[0],
+				})
 			}
+
 		}
 	}()
 
 	c.quit = quit
-	c.dataQueue = dataQueue
 
 	return nil
+}
+
+func (c *Client) HookEvent(name string) chan json.RawMessage {
+	fmt.Println("Register: ", name)
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	out := make(chan json.RawMessage, 1)
+
+	echan, ok := c.eventHandlers[name]
+	if !ok {
+		echan = make(chan chan json.RawMessage, 15)
+		c.eventHandlers[name] = echan
+	}
+
+	echan <- out
+
+	return out
+}
+
+func (c *Client) receiveEvent(e *event) {
+	fmt.Println("Got Event: ", e.Event)
+
+	if clients, ok := c.eventHandlers[e.Event]; ok {
+		if len(clients) == 0 {
+			return
+		}
+
+		for c := range clients {
+			c <- e.Data
+		}
+
+		return
+	}
 }
 
 func (c *Client) Close() {

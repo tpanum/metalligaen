@@ -2,6 +2,7 @@ package scraper
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -10,14 +11,16 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/tpanum/metalligaen/api"
+	"github.com/PuerkitoBio/goquery"
+
+	"github.com/tpanum/metalligaen/models"
 )
 
-func scoreFromGameResult(result string) (*api.Score, error) {
+func scoreFromGameResult(result string) (*models.Score, error) {
 	scoreSplit := strings.Split(result, " - ")
-	var score *api.Score
+	var score *models.Score
 
-	if len(scoreSplit) != 0 {
+	if len(scoreSplit) == 2 {
 		homeScoreStr, awayScoreStr := scoreSplit[0], scoreSplit[1]
 
 		val, err := strconv.Atoi(homeScoreStr)
@@ -25,9 +28,9 @@ func scoreFromGameResult(result string) (*api.Score, error) {
 			return nil, fmt.Errorf("Unable to parse home score to integer")
 		}
 
-		score = &api.Score{
-			Home: api.Situation{
-				Goals: uint(val),
+		score = &models.Score{
+			Home: models.Goals{
+				Amount: uint(val),
 			},
 		}
 
@@ -36,18 +39,15 @@ func scoreFromGameResult(result string) (*api.Score, error) {
 			return nil, fmt.Errorf("Unable to parse away score to integer")
 		}
 
-		score.Away = api.Situation{
-			Goals: uint(val),
+		score.Away = models.Goals{
+			Amount: uint(val),
 		}
 	}
 
 	return score, nil
 }
 
-func (c *Client) GetSchedule(id int) error {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
+func (c *Client) GetSchedule(id int) ([]*models.Match, error) {
 	v := url.Values{
 		"transport":       {"serverSentEvents"},
 		"clientProtocol":  {"1.5"},
@@ -62,46 +62,47 @@ func (c *Client) GetSchedule(id int) error {
 
 	req, err := http.NewRequest("POST", postUrl, data)
 	if err != nil {
-		return err
+		return nil, err
 	}
+
+	output := c.HookEvent("schedule")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	resp.Body.Close()
 
-	rawData := <-c.dataQueue
+	rawData := <-output
+
 	var jsonData struct {
 		Games []rawMatch `json:"schedule"`
 	}
 
 	if err := json.Unmarshal(rawData, &jsonData); err != nil {
-		return err
+		return nil, err
 	}
 
-	matches := make([]*api.Match, len(jsonData.Games))
+	matches := make([]*models.Match, len(jsonData.Games))
 	for i, m := range jsonData.Games {
 		timeOfMatch, err := time.Parse("2006-01-02T15:04", m.Date[0:11]+m.Time)
 		if err != nil {
 			fmt.Println(err)
 		}
 
-		hometeam, err := api.TeamTagFromName(m.HomeTeam)
+		hometeam, err := models.TeamTagFromName(m.HomeTeam)
 		if err != nil {
-			fmt.Println(err)
 			continue
 		}
 
-		awayteam, err := api.TeamTagFromName(m.AwayTeam)
+		awayteam, err := models.TeamTagFromName(m.AwayTeam)
 		if err != nil {
-			fmt.Println(err)
 			continue
 		}
 
-		score, _ := scoreFromGameResult(m.GameScore)
+		score, err := scoreFromGameResult(m.GameScore)
 
-		matches[i] = &api.Match{
+		matches[i] = &models.Match{
 			ID:          uint(m.ID),
 			HomeTeamTag: hometeam,
 			AwayTeamTag: awayteam,
@@ -110,9 +111,46 @@ func (c *Client) GetSchedule(id int) error {
 		}
 	}
 
-	api.LoadMatches(matches)
+	return matches, nil
+}
 
-	return nil
+var (
+	TOURNEYID_REGEXP = regexp.MustCompile(`tournamentid=([0-9]+)`)
+)
+
+func GetLeagueIDsByName(name string) []int {
+	resp, err := http.Get("http://www.sportsadmin.dk/hockeystats/")
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+
+	doc, err := goquery.NewDocumentFromResponse(resp)
+	if err != nil {
+		return nil
+	}
+
+	var result []int
+	doc.Find("tr").Each(func(i int, row *goquery.Selection) {
+		cols := row.Find("td")
+
+		tournamentName := cols.First().Text()
+		if strings.Contains(tournamentName, name) {
+			link, ok := row.Find("a").Last().Attr("href")
+			if !ok {
+				return
+			}
+
+			matches := TOURNEYID_REGEXP.FindStringSubmatch(link)
+			if len(matches) > 0 {
+				idStr := matches[1]
+				id, _ := strconv.Atoi(idStr)
+				result = append(result, id)
+			}
+		}
+	})
+
+	return result
 }
 
 type rawMatch struct {

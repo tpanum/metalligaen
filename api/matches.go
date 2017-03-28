@@ -1,42 +1,29 @@
 package api
 
 import (
-	"time"
+	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo"
-	"net/http"
+	"github.com/tpanum/metalligaen/models"
+	"github.com/tpanum/metalligaen/scraper"
 )
 
-type penalty struct {
-	Num      uint
-	Duration uint
-	Time     uint
-}
-
-type Situation struct {
-	Goals     uint      `json:"goals"`
-	Penalties []penalty `json:"penalties,omitempty"`
-}
-
-type Score struct {
-	Home Situation `json:"home"`
-	Away Situation `json:"away"`
-}
-
-type Match struct {
-	ID          uint      `json:"id"`
-	HomeTeamTag string    `json:"hometeam_tag"`
-	AwayTeamTag string    `json:"awayteam_tag"`
-	Score       *Score    `json:"score,omitempty"`
-	TimeOfMatch time.Time `json:"time_of_match"`
-}
-
-var matches []*Match
-
-func LoadMatches(m []*Match) {
-	matches = m
-}
-
 func GetMatches(c echo.Context) error {
-	return c.JSON(http.StatusOK, matches)
+	return c.JSON(http.StatusOK, models.Matches)
+}
+
+func GetMatch(c echo.Context) error {
+	id := c.Param("id")
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		return err
+	}
+
+	m, err := scraper.MatchFromReport(uint(idInt))
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, m)
 }
