@@ -21,7 +21,7 @@ type Penalties struct {
 }
 
 type Goal struct {
-	ScorerNum       uint  `json:"scorer_num"`
+	ScorerNum       uint  `json:"num"`
 	AssistFirstNum  *uint `json:"a1_num,omitempty"`
 	AssistSecondNum *uint `json:"a2_num,omitempty"`
 	Time            uint  `json:"time"`

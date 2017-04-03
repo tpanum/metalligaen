@@ -10,7 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 
-	"github.com/donovanhide/eventsource"
+	"github.com/shanna/eventsource"
 	"github.com/tpanum/metalligaen/scraper"
 )
 
@@ -53,21 +53,15 @@ var (
 )
 
 func sendToStream(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("0")
-
-	data, ok := r.Form["data"]
-	if !ok {
+	data := r.FormValue("data")
+	if data == "" {
 		return
 	}
-
-	fmt.Println("1")
 
 	var req angularRequest
-	if err := json.Unmarshal([]byte(data[0]), &req); err != nil {
+	if err := json.Unmarshal([]byte(data), &req); err != nil {
 		return
 	}
-
-	fmt.Println("2")
 
 	if value, ok := reqToData[req.M]; ok {
 		pushValueToConn(r, value)
@@ -101,7 +95,6 @@ var reqResp = map[string]http.HandlerFunc{
 }
 
 func MetalligaenStub() *httptest.Server {
-
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		uri := r.RequestURI
 
@@ -118,28 +111,24 @@ func MetalligaenStub() *httptest.Server {
 	}))
 }
 
-func TestNewClient(t *testing.T) {
-	server := MetalligaenStub()
-	defer server.Close()
-
-	if _, err := scraper.NewClientWithConfig(scraper.ClientConfig{
-		Domain: server.URL,
-	}); err != nil {
-		t.Error("Unable to start scraper client. Error: " + err.Error())
-		return
-	}
-}
-
 func TestRegisterSchedule(t *testing.T) {
 	server := MetalligaenStub()
 	defer server.Close()
 
-	c, _ := scraper.NewClientWithConfig(scraper.ClientConfig{
+	c, err := scraper.NewClientWithConfig(scraper.ClientConfig{
 		Domain: server.URL,
 	})
+	if err != nil {
+		t.Fatalf("Unable to start scraper client. Error: " + err.Error())
+	}
+	defer c.Close()
 
-	if _, err := c.GetSchedule(0); err != nil {
-		t.Error("Unable to get schedule: " + err.Error())
-		return
+	matches, err := c.GetSchedule(0)
+	if err != nil {
+		t.Fatalf("Unable to get schedule: " + err.Error())
+	}
+
+	if len(matches) < 1 {
+		t.Fatalf("Unable to receive matches")
 	}
 }

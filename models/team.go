@@ -4,72 +4,107 @@ import (
 	"fmt"
 )
 
+type colorTheme struct {
+	Main      string `json:"main"`
+	Secondary string `json:"secondary"`
+}
+
 type Team struct {
-	Tag     string `json:"tag"`
-	Name    string `json:"name"`
-	Color   string `json:"color"`
-	LogoUrl string `json:"logo_url"`
+	Tag     string     `json:"tag"`
+	Name    string     `json:"name"`
+	Colors  colorTheme `json:"colors"`
+	LogoUrl string     `json:"logo_url"`
 }
 
 var Teams []*Team = []*Team{
 	{
-		Tag:     "SE",
-		Name:    "SønderjyskE",
-		Color:   "#fff",
+		Tag:  "SE",
+		Name: "SønderjyskE",
+		Colors: colorTheme{
+			Main:      "#fff",
+			Secondary: "#344480",
+		},
 		LogoUrl: "/static/sj.png",
 	},
 	{
-		Tag:     "AP",
-		Name:    "Aalborg Pirates",
-		Color:   "#C31D2B",
+		Tag:  "AP",
+		Name: "Aalborg Pirates",
+		Colors: colorTheme{
+			Main:      "#C31D2B",
+			Secondary: "#182336",
+		},
 		LogoUrl: "/static/ap.png",
 	},
 	{
-		Tag:     "EE",
-		Name:    "Esbjerg Energy",
-		Color:   "#FEC424",
+		Tag:  "EE",
+		Name: "Esbjerg Energy",
+		Colors: colorTheme{
+			Main:      "#FEC424",
+			Secondary: "#10213E",
+		},
 		LogoUrl: "/static/ee.png",
 	},
 	{
-		Tag:     "HE",
-		Name:    "Herlev Eagles",
-		Color:   "#000",
+		Tag:  "HE",
+		Name: "Herlev Eagles",
+		Colors: colorTheme{
+			Main:      "#000",
+			Secondary: "#FEC931",
+		},
 		LogoUrl: "/static/he.png",
 	},
 	{
-		Tag:     "HBF",
-		Name:    "Herning Blue Fox",
-		Color:   "#003470",
+		Tag:  "HBF",
+		Name: "Herning Blue Fox",
+		Colors: colorTheme{
+			Main:      "#003470",
+			Secondary: "#FABA00",
+		},
 		LogoUrl: "/static/hbf.png",
 	},
 	{
-		Tag:     "OB",
-		Name:    "Odense Bulldogs",
-		Color:   "#005927",
+		Tag:  "OB",
+		Name: "Odense Bulldogs",
+		Colors: colorTheme{
+			Main:      "#005927",
+			Secondary: "#000",
+		},
 		LogoUrl: "/static/ob.png",
 	},
 	{
-		Tag:     "RMB",
-		Name:    "Rødovre Mighty Bulls",
-		Color:   "#790002",
+		Tag:  "RMB",
+		Name: "Rødovre Mighty Bulls",
+		Colors: colorTheme{
+			Main:      "#790002",
+			Secondary: "#000",
+		},
 		LogoUrl: "/static/rmb.png",
 	},
 	{
-		Tag:     "RSC",
-		Name:    "Rungsted Seier Capital",
-		Color:   "#184FA1",
+		Tag:  "RSC",
+		Name: "Rungsted Seier Capital",
+		Colors: colorTheme{
+			Main:      "#184FA1",
+			Secondary: "#D3253C",
+		},
 		LogoUrl: "/static/rsc.png",
 	},
 	{
-		Tag:     "FWH",
-		Name:    "Frederikshavn White Hawks",
-		Color:   "#FFF",
+		Tag:  "FWH",
+		Name: "Frederikshavn White Hawks",
+		Colors: colorTheme{
+			Main:      "#FFF",
+			Secondary: "#F8A536",
+		},
 		LogoUrl: "/static/fwh.png",
 	},
 	{
-		Tag:     "GS",
-		Name:    "Gentofte Stars",
-		Color:   "#FFF",
+		Tag:  "GS",
+		Name: "Gentofte Stars",
+		Colors: colorTheme{
+			Main:      "#FFF",
+			Secondary: "#002B60",
+		},
 		LogoUrl: "/static/gs.png",
 	},
 }

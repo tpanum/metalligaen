@@ -55,9 +55,7 @@ func (c *Client) GetSchedule(id int) ([]*models.Match, error) {
 		"connectionToken": {c.config.Token},
 	}
 
-	fmt.Println("Forming post")
-
-	postUrl := DOMAIN + "/signalr/send?" + v.Encode()
+	postUrl := c.config.Domain + "/signalr/send?" + v.Encode()
 	data := strings.NewReader(url.Values{
 		"data": {fmt.Sprintf(`{"H":"sportsadminlivehub","M":"RegisterSchedule","A":[%v],"I":0}`, id)},
 	}.Encode())
@@ -66,10 +64,9 @@ func (c *Client) GetSchedule(id int) ([]*models.Match, error) {
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	output := c.HookEvent("schedule")
-
-	fmt.Println("Sending post")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

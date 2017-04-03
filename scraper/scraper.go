@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	esource "github.com/donovanhide/eventsource"
+	esource "github.com/shanna/eventsource"
 )
 
 type event struct {
@@ -128,6 +128,7 @@ func (c *Client) connect() error {
 		for {
 			select {
 			case <-quit:
+				stream.Close()
 				return
 			case err := <-stream.Errors:
 				fmt.Println("Error : ", err)
@@ -180,11 +181,15 @@ func (c *Client) receiveEvent(e *event) {
 			return
 		}
 
-		for c := range clients {
-			c <- e.Data
-		}
+		for {
+			select {
+			case c := <-clients:
+				c <- e.Data
+			default:
+				return
+			}
 
-		return
+		}
 	}
 }
 
