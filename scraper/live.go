@@ -48,11 +48,11 @@ func (c *Client) ListenLive() error {
 		"transport":       {"serverSentEvents"},
 		"clientProtocol":  {"1.5"},
 		"connectionData":  {"[{\"name\":\"sportsadminlivehub\"}]"},
-		"connectionToken": {c.token},
+		"connectionToken": {c.config.Token},
 		"tid":             {"1"},
 	}
 
-	postUrl := c.domain + "/signalr/send?" + v.Encode()
+	postUrl := c.config.Domain + "/signalr/send?" + v.Encode()
 	data := strings.NewReader(url.Values{
 		"data": {fmt.Sprintf(`{"H":"sportsadminlivehub","M":"Register","A":[%v,true,true],"I":0}`, 1326)},
 	}.Encode())

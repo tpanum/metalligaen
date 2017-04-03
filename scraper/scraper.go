@@ -17,8 +17,7 @@ type event struct {
 }
 
 type Client struct {
-	domain        string
-	token         string
+	config        ClientConfig
 	quit          chan struct{}
 	eventHandlers map[string]chan chan json.RawMessage
 	mutex         sync.Mutex
@@ -31,41 +30,37 @@ const (
 	DOMAIN    = "http://metalligaen.dk"
 )
 
-func NewClient(domain string) (*Client, error) {
-	v := url.Values{
-		"clientProtocol": {"1.5"},
-		"connectionData": {"[{\"name\":\"sportsadminlivehub\"}]"},
-	}
+type ClientConfig struct {
+	Domain string
+	Token  string
+}
 
-	resp, err := http.Get(domain + "/signalr/negotiate?" + v.Encode())
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	m := make(map[string]interface{})
-	err = json.NewDecoder(resp.Body).Decode(&m)
-	if err != nil {
-		return nil, err
-	}
-
-	if _, ok := m[CONNTOKEN]; !ok {
-		return nil, fmt.Errorf("Unable to retrieve connection token")
-	}
-
-	token, ok := m[CONNTOKEN].(string)
-	if !ok {
-		return nil, fmt.Errorf("Unable to retrieve connection token")
-	}
-
+func NewClientWithConfig(conf ClientConfig) (*Client, error) {
 	c := &Client{
-		domain:        domain,
+		config:        conf,
 		eventHandlers: make(map[string]chan chan json.RawMessage),
-		token:         token,
 		isClosed:      true,
 	}
 
-	c.connect()
+	if err := c.connect(); err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+func NewClient() (*Client, error) {
+	c := &Client{
+		config: ClientConfig{
+			Domain: DOMAIN,
+		},
+		eventHandlers: make(map[string]chan chan json.RawMessage),
+		isClosed:      true,
+	}
+
+	if err := c.connect(); err != nil {
+		return nil, err
+	}
 
 	return c, nil
 }
@@ -80,21 +75,49 @@ type angularStruct struct {
 
 func (c *Client) connect() error {
 	v := url.Values{
+		"clientProtocol": {"1.5"},
+		"connectionData": {"[{\"name\":\"sportsadminlivehub\"}]"},
+	}
+
+	resp, err := http.Get(c.config.Domain + "/signalr/negotiate?" + v.Encode())
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	m := make(map[string]interface{})
+	err = json.NewDecoder(resp.Body).Decode(&m)
+	if err != nil {
+		return err
+	}
+
+	if _, ok := m[CONNTOKEN]; !ok {
+		return fmt.Errorf("Unable to retrieve connection token")
+	}
+
+	token, ok := m[CONNTOKEN].(string)
+	if !ok {
+		return fmt.Errorf("Unable to retrieve connection token")
+	}
+
+	c.config.Token = token
+
+	v = url.Values{
 		"transport":       {"serverSentEvents"},
 		"clientProtocol":  {"1.5"},
 		"connectionData":  {"[{\"name\":\"sportsadminlivehub\"}]"},
-		"connectionToken": {c.token},
+		"connectionToken": {c.config.Token},
 		"tid":             {"1"},
 	}
 
 	quit := make(chan struct{})
 
-	stream, err := esource.Subscribe(c.domain+"/signalr/connect?"+v.Encode(), "")
+	stream, err := esource.Subscribe(c.config.Domain+"/signalr/connect?"+v.Encode(), "")
 	if err != nil {
 		return err
 	}
 
-	resp, err := http.Get(c.domain + "/signalr/start?" + v.Encode())
+	resp, err = http.Get(c.config.Domain + "/signalr/start?" + v.Encode())
 	if err != nil {
 		return err
 	}
@@ -133,7 +156,6 @@ func (c *Client) connect() error {
 }
 
 func (c *Client) HookEvent(name string) chan json.RawMessage {
-	fmt.Println("Register: ", name)
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 

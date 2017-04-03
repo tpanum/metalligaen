@@ -52,8 +52,10 @@ func (c *Client) GetSchedule(id int) ([]*models.Match, error) {
 		"transport":       {"serverSentEvents"},
 		"clientProtocol":  {"1.5"},
 		"connectionData":  {"[{\"name\":\"sportsadminlivehub\"}]"},
-		"connectionToken": {c.token},
+		"connectionToken": {c.config.Token},
 	}
+
+	fmt.Println("Forming post")
 
 	postUrl := DOMAIN + "/signalr/send?" + v.Encode()
 	data := strings.NewReader(url.Values{
@@ -66,6 +68,8 @@ func (c *Client) GetSchedule(id int) ([]*models.Match, error) {
 	}
 
 	output := c.HookEvent("schedule")
+
+	fmt.Println("Sending post")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

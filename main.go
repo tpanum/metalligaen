@@ -10,7 +10,6 @@ import (
 )
 
 func main() {
-
 	var matches []*models.Match
 	for _, id := range scraper.GetLeagueIDsByName("Metal Ligaen") {
 		c, _ := scraper.NewClient(scraper.DOMAIN)
