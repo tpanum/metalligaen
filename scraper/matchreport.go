@@ -12,8 +12,28 @@ import (
 	"github.com/tpanum/metalligaen/utils"
 )
 
-func MatchFromReport(id uint) (*models.Match, error) {
-	resp, err := http.Get(fmt.Sprintf("http://hockeyligaen.dk/gamesheet.aspx?gameID=%v", id))
+type MatchClient interface {
+	GetDetailsByID(uint) (*models.Match, error)
+}
+
+func NewMatchClient() MatchClient {
+	return &hockeyLigaClient{
+		domain: "http://hockeyligaen.dk",
+	}
+}
+
+func NewMatchClientWithDomain(domain string) MatchClient {
+	return &hockeyLigaClient{
+		domain: domain,
+	}
+}
+
+type hockeyLigaClient struct {
+	domain string
+}
+
+func (hlc *hockeyLigaClient) GetDetailsByID(id uint) (*models.Match, error) {
+	resp, err := http.Get(fmt.Sprintf("%s/gamesheet.aspx?gameID=%v", hlc.domain, id))
 	if err != nil {
 		return nil, err
 	}

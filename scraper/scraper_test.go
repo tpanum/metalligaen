@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -48,7 +47,7 @@ type angularRequest struct {
 
 var (
 	reqToData = map[string]string{
-		"RegisterSchedule": fileToString("../test/register_schedule.json"),
+		"RegisterSchedule": fileToString("../test/schedule.json"),
 	}
 )
 
@@ -97,8 +96,6 @@ var reqResp = map[string]http.HandlerFunc{
 func MetalligaenStub() *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		uri := r.RequestURI
-
-		fmt.Println(r.RequestURI)
 
 		for key, handler := range reqResp {
 			if strings.HasPrefix(uri, key) {
