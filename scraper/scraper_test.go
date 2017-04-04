@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 
 	"github.com/shanna/eventsource"
@@ -47,7 +48,7 @@ type angularRequest struct {
 
 var (
 	reqToData = map[string]string{
-		"RegisterSchedule": fileToString("../test/schedule.json"),
+		"RegisterSchedule": fileToString(filepath.Join("..", "test", "schedule.json")),
 	}
 )
 

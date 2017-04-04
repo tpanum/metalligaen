@@ -30,9 +30,24 @@ var (
 				Score: &models.Score{
 					Home: models.Goals{
 						Amount: 3,
+						Details: []models.Goal{
+							{
+								ScorerNum: 50,
+								Time:      374,
+							},
+							{
+								ScorerNum: 19,
+								Time:      2096,
+							},
+							{
+								ScorerNum: 19,
+								Time:      3169,
+							},
+						},
 					},
 					Away: models.Goals{
-						Amount: 0,
+						Amount:  0,
+						Details: []models.Goal{},
 					},
 				},
 			}
@@ -60,6 +75,35 @@ func HockeyligaStub() *httptest.Server {
 
 		http.Error(w, "not found", http.StatusNotFound)
 	}))
+}
+
+func compareGoals(t *testing.T, expectedGoals, outputGoals []models.Goal) {
+	if len(expectedGoals) != len(outputGoals) {
+		t.Fatalf("Goals does not match in length (%v vs. %v)",
+			len(expectedGoals),
+			len(outputGoals),
+		)
+		return
+	}
+
+	for i, goal := range outputGoals {
+		expectedGoal := expectedGoals[i]
+		if expectedGoal.ScorerNum != goal.ScorerNum {
+			t.Fatalf("Expected goal to be scored by \"%v\", but got \"%v\".",
+				expectedGoal.ScorerNum,
+				goal.ScorerNum,
+			)
+		}
+
+		if expectedGoal.Time != goal.Time {
+			t.Fatalf("Expected goal to be at time \"%v\", but got \"%v\".",
+				expectedGoal.Time,
+				goal.Time,
+			)
+		}
+
+	}
+
 }
 
 func TestGetDetailsByID(t *testing.T) {
@@ -125,5 +169,25 @@ func TestGetDetailsByID(t *testing.T) {
 			)
 		}
 
+		if match.Score.Away.Amount != expectedMatch.Score.Away.Amount {
+			t.Fatalf("Expected match away score to be \"%v\", but got \"%v\".",
+				expectedMatch.Score.Away.Amount,
+				match.Score.Away.Amount,
+			)
+		}
+
+		if expectedMatch.Score.Home.Details != nil {
+			compareGoals(t,
+				expectedMatch.Score.Home.Details,
+				match.Score.Home.Details,
+			)
+		}
+
+		if expectedMatch.Score.Home.Details != nil {
+			compareGoals(t,
+				expectedMatch.Score.Away.Details,
+				match.Score.Away.Details,
+			)
+		}
 	}
 }

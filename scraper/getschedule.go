@@ -2,7 +2,6 @@ package scraper
 
 import (
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -10,8 +9,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
-
-	"github.com/PuerkitoBio/goquery"
 
 	"github.com/tpanum/metalligaen/models"
 )
@@ -113,45 +110,6 @@ func (c *Client) GetSchedule(id int) ([]*models.Match, error) {
 	}
 
 	return matches, nil
-}
-
-var (
-	TOURNEYID_REGEXP = regexp.MustCompile(`tournamentid=([0-9]+)`)
-)
-
-func GetLeagueIDsByName(name string) []int {
-	resp, err := http.Get("http://www.sportsadmin.dk/hockeystats/")
-	if err != nil {
-		return nil
-	}
-	defer resp.Body.Close()
-
-	doc, err := goquery.NewDocumentFromResponse(resp)
-	if err != nil {
-		return nil
-	}
-
-	var result []int
-	doc.Find("tr").Each(func(i int, row *goquery.Selection) {
-		cols := row.Find("td")
-
-		tournamentName := cols.First().Text()
-		if strings.Contains(tournamentName, name) {
-			link, ok := row.Find("a").Last().Attr("href")
-			if !ok {
-				return
-			}
-
-			matches := TOURNEYID_REGEXP.FindStringSubmatch(link)
-			if len(matches) > 0 {
-				idStr := matches[1]
-				id, _ := strconv.Atoi(idStr)
-				result = append(result, id)
-			}
-		}
-	})
-
-	return result
 }
 
 type rawMatch struct {
